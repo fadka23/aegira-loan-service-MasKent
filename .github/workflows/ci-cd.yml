@@ -1,75 +1,32 @@
-name: CI/CD
+name: Build and Deploy
 
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
-
-permissions:
-  contents: read
+    branches:
+      - main
+      - master
+  workflow_dispatch:
 
 concurrency:
-  group: aegira-loan-platform-${{ github.ref }}
+  group: production-deploy
   cancel-in-progress: true
 
 jobs:
-  backend:
-    name: Backend test
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: aegira-loan-service
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "8"
-          cache: maven
-      - name: Test backend
-        run: mvn --batch-mode verify
-
-  android:
-    name: Android build and unit test
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: CreditAppDemoMobile
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-      - name: Make Gradle wrapper executable
-        run: chmod +x gradlew
-      - name: Run unit tests and build debug APK
-        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: creditapp-debug-apk
-          path: CreditAppDemoMobile/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
-
-  deploy-local:
-    name: Build and deploy local stack
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, android]
+  deploy:
+    name: Deploy with self-hosted Docker runner
     runs-on: [self-hosted, docker-local]
+    permissions:
+      contents: read
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Create deployment environment file
-        shell: bash
-        env:
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: |
-          test -n "$JWT_SECRET" || { echo "Repository secret JWT_SECRET is required"; exit 1; }
-          printf 'JWT_SECRET=%s\n' "$JWT_SECRET" > .env
-      - name: Deploy backend dependencies and service
-        run: docker compose up -d --build --remove-orphans postgres redis aegira-loan-service
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Verify Docker Compose
+        run: docker compose version
+
+      - name: Build and deploy services
+        run: docker compose up -d --build --remove-orphans
+
       - name: Show deployed services
         run: docker compose ps

@@ -71,11 +71,10 @@ services:
       LABELS: docker-local
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - runner_data:/runner/data
+      - ./runner_data:/runner/data
     restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
   mobile_apk:
-  runner_data:
