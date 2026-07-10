@@ -1,0 +1,84 @@
+name: aegira-loan-platform
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aegira_loan}
+      POSTGRES_USER: ${POSTGRES_USER:-aegira}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegira_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:5.0.3-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  aegira-loan-service:
+    build: ./aegira-loan-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/aegira_loan
+      SPRING_DATASOURCE_USERNAME: aegira
+      SPRING_DATASOURCE_PASSWORD: aegira_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: 3600000
+      LOAN_DATA_SOURCE_MODE: ${LOAN_DATA_SOURCE_MODE:-DATABASE}
+      IDEMPOTENCY_ENABLED: ${IDEMPOTENCY_ENABLED:-true}
+      IDEMPOTENCY_TTL_SECONDS: 86400
+
+  creditappdemomobile-build:
+    build:
+      context: ./CreditAppDemoMobile
+      dockerfile: Dockerfile
+    profiles: ["mobile-build"]
+    volumes:
+      - mobile_apk:/output
+    command: ["sh", "-c", "./gradlew --no-daemon testDebugUnitTest assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk /output/"]
+    restart: "no"
+
+  runner:
+    image: myoung34/github-runner:latest
+    profiles: ["runner"]
+    environment:
+      REPO_URL: ${RUNNER_REPO_URL:-https://github.com/fadka23/aegira-loan-service-MasKent}
+      RUNNER_NAME: ${RUNNER_NAME:-docker-local-runner}
+      RUNNER_TOKEN: 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
+      LABELS: docker-local
+      RUNNER_WORKDIR: /tmp/runner/work
+      CONFIGURED_ACTIONS_RUNNER_FILES_DIR: /runner/data
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner_data:/runner/data
+      - ./runner-work:/tmp/runner/work
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  mobile_apk:
+  runner_data:
