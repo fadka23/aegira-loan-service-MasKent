@@ -63,18 +63,15 @@ services:
 
   runner:
     image: myoung34/github-runner:latest
-    profiles: ["runner"]
+    container_name: github-runner-2
     environment:
-      REPO_URL: ${RUNNER_REPO_URL:-https://github.com/fadka23/aegira-loan-service-MasKent}
+      REPO_URL: https://github.com/fadka23/aegira-loan-service-MasKent
       RUNNER_NAME: ${RUNNER_NAME:-docker-local-runner}
       RUNNER_TOKEN: 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
       LABELS: docker-local
-      RUNNER_WORKDIR: /tmp/runner/work
-      CONFIGURED_ACTIONS_RUNNER_FILES_DIR: /runner/data
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner_data:/runner/data
-      - ./runner-work:/tmp/runner/work
     restart: unless-stopped
 
 volumes:
