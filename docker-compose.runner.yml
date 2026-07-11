@@ -1,0 +1,18 @@
+name: github-runner
+
+services:
+  runner:
+    image: myoung34/github-runner:latest
+    container_name: github-runner-2
+
+    environment:
+      REPO_URL: https://github.com/fadka23/aegira-loan-service-MasKent
+      RUNNER_NAME: docker-local-runner
+      RUNNER_TOKEN: A6HKPKSXROPANAUJSVXCXRDKKJYPG
+      LABELS: docker-local
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./runner_data:/runner/data
+
+    restart: unless-stopped

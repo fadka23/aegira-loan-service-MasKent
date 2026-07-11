@@ -13,20 +13,27 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy with self-hosted Docker runner
+    name: Deploy with Self-Hosted Docker Runner
     runs-on: [self-hosted, docker-local]
+
     permissions:
       contents: read
 
     steps:
-      - name: Check out source
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Verify Docker Compose
-        run: docker compose version
+      - name: Verify Docker
+        run: |
+          docker --version
+          docker compose version
 
-      - name: Build and deploy services
+      - name: Build and Deploy
         run: docker compose up -d --build --remove-orphans
 
-      - name: Show deployed services
+      - name: Show running containers
         run: docker compose ps
+
+      - name: Show logs if deployment fails
+        if: failure()
+        run: docker compose logs
