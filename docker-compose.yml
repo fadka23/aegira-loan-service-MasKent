@@ -1,64 +1,43 @@
-name: aegira-loan-platform
-
 services:
   postgres:
-    image: postgres:14-alpine
+    image: postgres:15
+    container_name: aegira-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-aegira_loan}
-      POSTGRES_USER: ${POSTGRES_USER:-aegira}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegira_password}
+      POSTGRES_DB: aegira
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      - "5432:5432"
 
   redis:
-    image: redis:5.0.3-alpine
-    command: redis-server --appendonly yes
+    image: redis:7-alpine
+    container_name: aegira-redis
+    restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      - "6379:6379"
 
-  aegira-loan-service:
-    build: ./aegira-loan-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    ports:
-      - "8080:8080"
+  backend:
+    image: fadhlya/backend:latest
+    container_name: aegira-backend
+    restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/aegira_loan
-      SPRING_DATASOURCE_USERNAME: aegira
-      SPRING_DATASOURCE_PASSWORD: aegira_password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/aegira
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: replace-with-a-long-random-secret
-      JWT_EXPIRATION: 3600000
-      LOAN_DATA_SOURCE_MODE: ${LOAN_DATA_SOURCE_MODE:-DATABASE}
-      IDEMPOTENCY_ENABLED: ${IDEMPOTENCY_ENABLED:-true}
-      IDEMPOTENCY_TTL_SECONDS: 86400
-
-  creditappdemo:
-    build:
-      context: ./creditappdemo
-      dockerfile: Dockerfile
     ports:
-      - "${CREDIT_APP_PORT:-5173}:80"
-    restart: unless-stopped
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
 
-volumes:
-  postgres_data:
-  redis_data:
+  frontend:
+    image: fadhlya/frontend:latest
+    container_name: aegira-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
