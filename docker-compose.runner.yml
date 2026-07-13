@@ -8,7 +8,7 @@ services:
     environment:
       REPO_URL: https://github.com/fadka23/aegira-loan-service-MasKent
       RUNNER_NAME: docker-local-runner
-      RUNNER_TOKEN: A6HKPKSD25IZ7OOJ24JBXYDKKJ7EK
+      RUNNER_TOKEN: A6HKPKXWVLZDU7HDB25ESSLKKROLC
       LABELS: docker-local
 
     volumes:
